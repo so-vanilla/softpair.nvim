@@ -9,6 +9,18 @@ local struct = require("softpair.struct")
 
 local M = {}
 
+function M.is_disabled()
+  return config.is_disabled()
+end
+
+local function enabled_call(fn, ...)
+  if M.is_disabled() then
+    return false
+  end
+
+  return fn(...)
+end
+
 local function map(mode, lhs, rhs, opts)
   vim.keymap.set(mode, lhs, rhs, vim.tbl_extend("force", { silent = true }, opts or {}))
 end
@@ -74,51 +86,51 @@ function M.delete_forward()
 end
 
 function M.wrap_visual(open)
-  return struct.wrap_visual(open)
+  return enabled_call(struct.wrap_visual, open)
 end
 
 function M.kill_line()
-  return soft_delete.kill_line()
+  return enabled_call(soft_delete.kill_line)
 end
 
 function M.strict_forward_sexp(count)
-  return sexp.forward(count)
+  return enabled_call(sexp.forward, count)
 end
 
 function M.strict_backward_sexp(count)
-  return sexp.backward(count)
+  return enabled_call(sexp.backward, count)
 end
 
 function M.strict_forward_sexp_in_string(count)
-  return sexp.forward(count)
+  return enabled_call(sexp.forward, count)
 end
 
 function M.strict_backward_sexp_in_string(count)
-  return sexp.backward(count)
+  return enabled_call(sexp.backward, count)
 end
 
 function M.strict_forward_sexp_in_comment(count)
-  return sexp.forward(count)
+  return enabled_call(sexp.forward, count)
 end
 
 function M.strict_backward_sexp_in_comment(count)
-  return sexp.backward(count)
+  return enabled_call(sexp.backward, count)
 end
 
 function M.strict_backward_sexp_or_single_line_comment_quotes(count)
-  return sexp.backward(count)
+  return enabled_call(sexp.backward, count)
 end
 
 function M.beginning_of_list_around_point()
-  return sexp.beginning_of_list()
+  return enabled_call(sexp.beginning_of_list)
 end
 
 function M.end_of_list_around_point()
-  return sexp.end_of_list()
+  return enabled_call(sexp.end_of_list)
 end
 
 function M.up_list(backward)
-  return sexp.up(backward)
+  return enabled_call(sexp.up, backward)
 end
 
 function M.before_sexp_p()
@@ -177,26 +189,39 @@ function M.dangling_delimiter_p(point)
 end
 
 function M.delete_region(start_pos, end_pos)
-  return soft_delete.delete_region(start_pos, end_pos)
+  return enabled_call(soft_delete.delete_region, start_pos, end_pos)
 end
 
 function M.delete_region_keep_balanced(start_pos, end_pos, strict, kill)
-  return soft_delete.delete_region_keep_balanced(start_pos, end_pos, strict, kill)
+  return enabled_call(soft_delete.delete_region_keep_balanced, start_pos, end_pos, strict, kill)
 end
 
 function M.soft_delete(from, to, strict, style, kill, fail_action, return_region)
-  return soft_delete.soft_delete(from, to, strict, style, kill, fail_action, return_region)
+  return enabled_call(
+    soft_delete.soft_delete,
+    from,
+    to,
+    strict,
+    style,
+    kill,
+    fail_action,
+    return_region
+  )
 end
 
 function M.soft_delete_by_move(move, strict, style, kill, fail_action)
-  return soft_delete.soft_delete_by_move(move, strict, style, kill, fail_action)
+  return enabled_call(soft_delete.soft_delete_by_move, move, strict, style, kill, fail_action)
 end
 
 function M.delete_active_region(visual_mode)
-  return soft_delete.delete_active_region(visual_mode)
+  return enabled_call(soft_delete.delete_active_region, visual_mode)
 end
 
 function M.kill_region(start_pos, end_pos)
+  if M.is_disabled() then
+    return false
+  end
+
   if start_pos and end_pos then
     return soft_delete.kill_region(start_pos, end_pos)
   end
@@ -204,167 +229,175 @@ function M.kill_region(start_pos, end_pos)
 end
 
 function M.kill_active_region(visual_mode)
-  return soft_delete.kill_active_region(visual_mode)
+  return enabled_call(soft_delete.kill_active_region, visual_mode)
 end
 
 function M.backward_delete_char(count)
-  return soft_delete.backward_delete_char(count)
+  return enabled_call(soft_delete.backward_delete_char, count)
 end
 
 function M.forward_delete_char(count)
-  return soft_delete.forward_delete_char(count)
+  return enabled_call(soft_delete.forward_delete_char, count)
 end
 
 function M.forward_kill_word(count)
-  return soft_delete.forward_kill_word(count)
+  return enabled_call(soft_delete.forward_kill_word, count)
 end
 
 function M.backward_kill_word(count)
-  return soft_delete.backward_kill_word(count)
+  return enabled_call(soft_delete.backward_kill_word, count)
 end
 
 function M.backward_kill_line()
-  return soft_delete.backward_kill_line()
+  return enabled_call(soft_delete.backward_kill_line)
 end
 
 function M.force_delete(count)
-  return soft_delete.force_delete(count)
+  return enabled_call(soft_delete.force_delete, count)
 end
 
 function M.forward_sexp(count)
-  return sexp.forward(count)
+  return enabled_call(sexp.forward, count)
 end
 
 function M.backward_sexp(count)
-  return sexp.backward(count)
+  return enabled_call(sexp.backward, count)
 end
 
 function M.forward_sexp_or_up_list(count)
+  if M.is_disabled() then
+    return false
+  end
+
   return sexp.forward(count) or sexp.up(false)
 end
 
 function M.backward_sexp_or_up_list(count)
+  if M.is_disabled() then
+    return false
+  end
+
   return sexp.backward(count) or sexp.up(true)
 end
 
 function M.beginning_of_sexp()
-  return sexp.beginning_of_sexp()
+  return enabled_call(sexp.beginning_of_sexp)
 end
 
 function M.end_of_sexp()
-  return sexp.end_of_sexp()
+  return enabled_call(sexp.end_of_sexp)
 end
 
 function M.syntactic_forward_punct()
-  return sexp.syntactic_forward_punct()
+  return enabled_call(sexp.syntactic_forward_punct)
 end
 
 function M.syntactic_backward_punct()
-  return sexp.syntactic_backward_punct()
+  return enabled_call(sexp.syntactic_backward_punct)
 end
 
 function M.mark_sexp_at_point()
-  return region.mark_sexp_at_point()
+  return enabled_call(region.mark_sexp_at_point)
 end
 
 function M.mark_list_around_point()
-  return region.mark_list_around_point()
+  return enabled_call(region.mark_list_around_point)
 end
 
 function M.mark_sexp_around_point()
-  return region.mark_sexp_around_point()
+  return enabled_call(region.mark_sexp_around_point)
 end
 
 function M.expand_region()
-  return region.expand()
+  return enabled_call(region.expand)
 end
 
 function M.contract_region()
-  return region.contract()
+  return enabled_call(region.contract)
 end
 
 function M.squeeze()
-  return struct.squeeze()
+  return enabled_call(struct.squeeze)
 end
 
 function M.slurp_forward(count)
-  return struct.slurp_forward(count)
+  return enabled_call(struct.slurp_forward, count)
 end
 
 function M.barf_forward(count)
-  return struct.barf_forward(count)
+  return enabled_call(struct.barf_forward, count)
 end
 
 function M.slurp_backward(count)
-  return struct.slurp_backward(count)
+  return enabled_call(struct.slurp_backward, count)
 end
 
 function M.barf_backward(count)
-  return struct.barf_backward(count)
+  return enabled_call(struct.barf_backward, count)
 end
 
 function M.splice()
-  return struct.splice()
+  return enabled_call(struct.splice)
 end
 
 function M.splice_killing_backward()
-  return struct.splice_killing_backward()
+  return enabled_call(struct.splice_killing_backward)
 end
 
 function M.splice_killing_forward()
-  return struct.splice_killing_forward()
+  return enabled_call(struct.splice_killing_forward)
 end
 
 function M.split()
-  return struct.split()
+  return enabled_call(struct.split)
 end
 
 function M.raise()
-  return struct.raise()
+  return enabled_call(struct.raise)
 end
 
 function M.transpose()
-  return struct.transpose()
+  return enabled_call(struct.transpose)
 end
 
 function M.convolute()
-  return struct.convolute()
+  return enabled_call(struct.convolute)
 end
 
 function M.change_inner(open)
-  return struct.change_inner(open or "(")
+  return enabled_call(struct.change_inner, open or "(")
 end
 
 function M.copy_inner(open)
-  return struct.copy_inner(open or "(")
+  return enabled_call(struct.copy_inner, open or "(")
 end
 
 function M.change_outer(open)
-  return struct.change_outer(open or "(")
+  return enabled_call(struct.change_outer, open or "(")
 end
 
 function M.copy_outer(open)
-  return struct.copy_outer(open or "(")
+  return enabled_call(struct.copy_outer, open or "(")
 end
 
 function M.wrap_next_sexps(count, open, close)
-  return struct.wrap_next_sexps(count, open, close)
+  return enabled_call(struct.wrap_next_sexps, count, open, close)
 end
 
 function M.wrap_round(count)
-  return struct.wrap_round(count)
+  return enabled_call(struct.wrap_round, count)
 end
 
 function M.wrap_square(count)
-  return struct.wrap_square(count)
+  return enabled_call(struct.wrap_square, count)
 end
 
 function M.wrap_curly(count)
-  return struct.wrap_curly(count)
+  return enabled_call(struct.wrap_curly, count)
 end
 
 function M.wrap_angle(count)
-  return struct.wrap_angle(count)
+  return enabled_call(struct.wrap_angle, count)
 end
 
 function M.disable_puni_mode()

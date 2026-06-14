@@ -306,6 +306,40 @@ function M.run()
   assert_equal(current_lines()[1], "bar", "empty line joined")
   assert_equal(vim.fn.getregtype('"'), "v", "empty line join register type")
 
+  new_buffer({ "foo bar" }, { 1, 4 })
+  vim.b.softpair_enabled = false
+  assert_truthy(softpair.is_disabled(), "buffer-local disabled is visible")
+  assert_falsy(softpair.kill_line(), "disabled kill line is a no-op")
+  assert_equal(current_lines()[1], "foo bar", "disabled kill line keeps buffer")
+
+  new_buffer({ "()" }, { 1, 0 })
+  vim.b.softpair_enabled = false
+  set_point(0)
+  assert_falsy(softpair.forward_delete_char(), "disabled forward char delete is a no-op")
+  assert_equal(current_text(), "()", "disabled forward char delete keeps buffer")
+
+  new_buffer({ "(a b)" }, { 1, 1 })
+  vim.b.softpair_enabled = false
+  set_point(1)
+  local disabled_bounds = softpair.bounds_of_sexp_around_point()
+  assert_equal(disabled_bounds.start, 0, "disabled read-only bounds start")
+  assert_equal(disabled_bounds.finish, 5, "disabled read-only bounds finish")
+  vim.b.softpair_enabled = nil
+
+  softpair.setup({
+    notify = false,
+    disabled_filetypes = { softpair_disabled_test = true },
+  })
+  new_buffer({ "a b" }, { 1, 0 })
+  vim.bo.filetype = "softpair_disabled_test"
+  set_point(0)
+  assert_truthy(softpair.is_disabled(), "disabled filetype is visible")
+  assert_falsy(softpair.wrap_round(2), "disabled structural edit is a no-op")
+  assert_equal(current_text(), "a b", "disabled structural edit keeps buffer")
+  vim.bo.filetype = ""
+
+  softpair.setup({ notify = false })
+
   softpair.setup({ mappings = true, notify = false })
   local backspace_map = vim.fn.maparg("<BS>", "i", false, true)
   local delete_map = vim.fn.maparg("<Del>", "i", false, true)
