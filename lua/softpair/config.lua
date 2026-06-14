@@ -19,6 +19,8 @@ M.defaults = {
     ['"'] = true,
   },
   ignore_escaped_delimiters = true,
+  disabled_filetypes = {},
+  disabled_buftypes = {},
 }
 
 M.options = vim.deepcopy(M.defaults)
@@ -48,6 +50,15 @@ end
 
 function M.is_pair(open, close)
   return M.close_for(open) == close
+end
+
+function M.is_disabled()
+  if vim.b.softpair_enabled == false then
+    return true
+  end
+
+  return M.options.disabled_filetypes[vim.bo.filetype] == true
+    or M.options.disabled_buftypes[vim.bo.buftype] == true
 end
 
 return M

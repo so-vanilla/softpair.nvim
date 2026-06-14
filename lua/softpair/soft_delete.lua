@@ -97,11 +97,70 @@ local function delete_range_guarded(start_pos, end_pos, kill, regtype, force)
   return doc.delete_range(buffer.current(), start_pos, end_pos, kill, regtype or "v")
 end
 
+local function next_char_pos(text, pos)
+  if pos >= #text then
+    return #text
+  end
+
+  local first = text:byte(pos + 1)
+  if not first then
+    return #text
+  end
+
+  local len
+  if first < 0x80 then
+    len = 1
+  elseif first < 0xE0 then
+    len = 2
+  elseif first < 0xF0 then
+    len = 3
+  elseif first < 0xF8 then
+    len = 4
+  else
+    len = 1
+  end
+
+  return math.min(pos + len, #text)
+end
+
+local function prev_char_pos(text, pos)
+  local cursor = math.min(pos, #text)
+  if cursor <= 0 then
+    return 0
+  end
+
+  while cursor > 1 do
+    local byte = text:byte(cursor)
+    if not byte or byte < 0x80 or byte >= 0xC0 then
+      break
+    end
+    cursor = cursor - 1
+  end
+
+  return cursor - 1
+end
+
+local function advance_chars(text, pos, count)
+  local cursor = pos
+  for _ = 1, count do
+    cursor = next_char_pos(text, cursor)
+  end
+  return cursor
+end
+
+local function retreat_chars(text, pos, count)
+  local cursor = pos
+  for _ = 1, count do
+    cursor = prev_char_pos(text, cursor)
+  end
+  return cursor
+end
+
 local function kill_range()
   local bufnr = buffer.current()
   local row = buffer.cursor()
   local line = buffer.line(bufnr, row)
-  local col = buffer.point_col(line)
+  local col = buffer.kill_line_col(line)
   local line_count = buffer.line_count(bufnr)
   local lines = doc.lines(bufnr)
 
@@ -252,7 +311,12 @@ function M.soft_delete_by_move(move, strict, style, kill, fail_action)
   return M.soft_delete(from, to, strict, style, kill, fail_action)
 end
 
-local function active_region_range()
+local function active_region_range(visual_mode)
+  if visual_mode == "\22" then
+    notify("Blockwise regions are not supported yet", vim.log.levels.WARN)
+    return nil
+  end
+
   local start = vim.fn.getpos("'<")
   local finish = vim.fn.getpos("'>")
   if start[2] == 0 or finish[2] == 0 then
@@ -260,27 +324,48 @@ local function active_region_range()
   end
 
   local lines = doc.lines()
-  local start_pos = doc.position_from_row_col(lines, start[2] - 1, start[3] - 1)
-  local end_pos = doc.position_from_row_col(lines, finish[2] - 1, finish[3])
-  return math.min(start_pos, end_pos), math.max(start_pos, end_pos)
+  local start_row = start[2] - 1
+  local finish_row = finish[2] - 1
+  local start_col = start[3] - 1
+  local finish_col = finish[3]
+
+  if start_row > finish_row or (start_row == finish_row and start_col > finish_col) then
+    start_row, finish_row = finish_row, start_row
+    start_col, finish_col = finish_col, start_col
+  end
+
+  if visual_mode == "V" then
+    local end_pos
+    if finish_row + 1 < #lines then
+      end_pos = doc.position_from_row_col(lines, finish_row + 1, 0)
+    else
+      end_pos = doc.position_from_row_col(lines, finish_row, #(lines[finish_row + 1] or ""))
+    end
+
+    return doc.position_from_row_col(lines, start_row, 0), end_pos, "V"
+  end
+
+  local start_pos = doc.position_from_row_col(lines, start_row, start_col)
+  local end_pos = doc.position_from_row_col(lines, finish_row, finish_col)
+  return math.min(start_pos, end_pos), math.max(start_pos, end_pos), "v"
 end
 
-function M.delete_active_region()
-  local start_pos, end_pos = active_region_range()
+function M.delete_active_region(visual_mode)
+  local start_pos, end_pos, regtype = active_region_range(visual_mode)
   if not start_pos then
     return false
   end
 
-  return M.delete_region(start_pos, end_pos)
+  return delete_range_guarded(start_pos, end_pos, false, regtype)
 end
 
-function M.kill_active_region()
-  local start_pos, end_pos = active_region_range()
+function M.kill_active_region(visual_mode)
+  local start_pos, end_pos, regtype = active_region_range(visual_mode)
   if not start_pos then
     return false
   end
 
-  return M.kill_region(start_pos, end_pos)
+  return delete_range_guarded(start_pos, end_pos, true, regtype)
 end
 
 function M.backward_delete_char(count, force)
@@ -300,7 +385,7 @@ function M.backward_delete_char(count, force)
     return delete_range_guarded(point - 1, point + 1, false, "v", force)
   end
 
-  return delete_range_guarded(math.max(point - n, 0), point, false, "v", force)
+  return delete_range_guarded(retreat_chars(text, point, n), point, false, "v", force)
 end
 
 function M.forward_delete_char(count, force)
@@ -320,7 +405,7 @@ function M.forward_delete_char(count, force)
     return delete_range_guarded(point, point + 2, false, "v", force)
   end
 
-  return delete_range_guarded(point, math.min(point + n, #text), false, "v", force)
+  return delete_range_guarded(point, advance_chars(text, point, n), false, "v", force)
 end
 
 function M.forward_kill_word(count)

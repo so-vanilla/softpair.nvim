@@ -192,8 +192,8 @@ function M.soft_delete_by_move(move, strict, style, kill, fail_action)
   return soft_delete.soft_delete_by_move(move, strict, style, kill, fail_action)
 end
 
-function M.delete_active_region()
-  return soft_delete.delete_active_region()
+function M.delete_active_region(visual_mode)
+  return soft_delete.delete_active_region(visual_mode)
 end
 
 function M.kill_region(start_pos, end_pos)
@@ -203,8 +203,8 @@ function M.kill_region(start_pos, end_pos)
   return soft_delete.kill_active_region()
 end
 
-function M.kill_active_region()
-  return soft_delete.kill_active_region()
+function M.kill_active_region(visual_mode)
+  return soft_delete.kill_active_region(visual_mode)
 end
 
 function M.backward_delete_char(count)

@@ -31,14 +31,16 @@ end
 
 function M.point_col(line)
   local _, col = M.cursor()
+
+  return col
+end
+
+function M.kill_line_col(line)
+  local _, col = M.cursor()
   local mode = M.current_mode()
 
-  if mode:sub(1, 1) == "n" and #line > 0 then
-    if col >= #line - 1 then
-      return #line
-    end
-
-    return col
+  if mode:sub(1, 1) == "n" and #line > 0 and col >= #line - 1 then
+    return #line
   end
 
   return col

@@ -38,6 +38,14 @@ local function is_adjacent_pair(text, point, open, close)
     return false
   end
 
+  if
+    open == close
+    and config.options.quote_pairs[open]
+    and not config.options.string_delimiters[open]
+  then
+    return true
+  end
+
   if open == close and config.options.string_delimiters[open] then
     return syntax.is_string_open(text, point, config.options)
       and syntax.is_string_close(text, point + 1, config.options)
@@ -50,6 +58,14 @@ end
 local function is_forward_pair(text, point, open, close)
   if not config.is_pair(open, close) then
     return false
+  end
+
+  if
+    open == close
+    and config.options.quote_pairs[open]
+    and not config.options.string_delimiters[open]
+  then
+    return true
   end
 
   if open == close and config.options.string_delimiters[open] then
@@ -75,6 +91,10 @@ local function refuse_pair_break()
 end
 
 function M.expr_open(open)
+  if config.is_disabled() then
+    return open
+  end
+
   local close = config.close_for(open)
   if not close then
     return open
@@ -84,6 +104,10 @@ function M.expr_open(open)
 end
 
 function M.expr_quote(quote)
+  if config.is_disabled() then
+    return quote
+  end
+
   local bufnr = buffer.current()
   local row, col = buffer.cursor()
   local line = buffer.line(bufnr, row)
@@ -101,6 +125,10 @@ function M.expr_quote(quote)
 end
 
 function M.expr_close(close)
+  if config.is_disabled() then
+    return close
+  end
+
   local _, next = buffer.surrounding_chars()
 
   if next == close then
@@ -111,6 +139,10 @@ function M.expr_close(close)
 end
 
 function M.expr_backspace()
+  if config.is_disabled() then
+    return keys("<BS>")
+  end
+
   local text, point = current_context()
   local prev, next = buffer.surrounding_chars()
 
@@ -130,6 +162,10 @@ function M.expr_backspace()
 end
 
 function M.expr_delete()
+  if config.is_disabled() then
+    return keys("<Del>")
+  end
+
   local text, point = current_context()
   local current, after = buffer.chars_at_point()
 

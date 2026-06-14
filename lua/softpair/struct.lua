@@ -72,6 +72,15 @@ local function list_bounds_for_edit(text, point)
     return nil
   end
 
+  local at_point = sexp.bounds_at_point(text, point)
+  if
+    at_point
+    and at_point.type == "list"
+    and (at_point.start == point or at_point.finish - 1 == point)
+  then
+    return at_point
+  end
+
   local around = sexp.bounds_around_point(text, point)
   if not around or around.type ~= "list" then
     return nil
@@ -82,6 +91,24 @@ end
 
 local function inner_bounds(around)
   return { start = around.start + 1, finish = around.finish - 1, type = "list-inner" }
+end
+
+local function list_bounds_matching_open(text, point, open)
+  if point_in_string(text, point) then
+    return nil
+  end
+
+  local best = nil
+  for pos = 0, #text - 1 do
+    if char_at(text, pos) == open then
+      local close = sexp.match_forward(text, pos)
+      if close and pos <= point and point <= close + 1 then
+        best = { start = pos, finish = close + 1, type = "list" }
+      end
+    end
+  end
+
+  return best
 end
 
 function M.squeeze()
@@ -418,8 +445,8 @@ end
 
 function M.change_inner(open)
   local text, point = current_text_point()
-  local around = list_bounds_for_edit(text, point)
-  if not around or text:sub(around.start + 1, around.start + 1) ~= open then
+  local around = list_bounds_matching_open(text, point, open)
+  if not around then
     return false
   end
 
@@ -429,8 +456,8 @@ end
 
 function M.copy_inner(open)
   local text, point = current_text_point()
-  local around = list_bounds_for_edit(text, point)
-  if not around or text:sub(around.start + 1, around.start + 1) ~= open then
+  local around = list_bounds_matching_open(text, point, open)
+  if not around then
     return false
   end
 
@@ -440,8 +467,8 @@ end
 
 function M.change_outer(open)
   local text, point = current_text_point()
-  local around = list_bounds_for_edit(text, point)
-  if not around or text:sub(around.start + 1, around.start + 1) ~= open then
+  local around = list_bounds_matching_open(text, point, open)
+  if not around then
     return false
   end
 
@@ -451,8 +478,8 @@ end
 
 function M.copy_outer(open)
   local text, point = current_text_point()
-  local around = list_bounds_for_edit(text, point)
-  if not around or text:sub(around.start + 1, around.start + 1) ~= open then
+  local around = list_bounds_matching_open(text, point, open)
+  if not around then
     return false
   end
 
